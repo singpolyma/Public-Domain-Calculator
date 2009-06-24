@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<!-- Copyright © 2009, Stephen Paul Weber <singpolyma@singpolyma.net>
+
+	Permission to use, copy, modify, and/or distribute this software for any
+	purpose with or without fee is hereby granted, provided that the above
+	copyright notice and this permission notice appear in all copies.
+
+	THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+	WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+	MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+	ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+	WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+	ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. -->
+	<head>
+		<title>Canadian Literary Public Domain Calculator</title>
+		<style type="text/css">
+			body > h1, body > p {
+				text-align: center;
+			}
+			form {
+				text-align: center;
+				margin-bottom: 1em;
+			}
+			#output {
+				width: 40em;
+				margin: auto;
+				border: thin solid white;
+			}
+			#output h2 {
+				font-size: 1em;
+				font-weight: normal;
+				margin: 0px;
+				text-decoration: underline;
+				color: blue;
+				cursor: pointer;
+			}
+			#output ul ul, #output ul ul > li {
+				font-size: 0.9em;
+				padding: 0px;
+				list-style-type: none;
+				display: inline;
+			}
+			#output ul ul > li:after {
+				content: ", ";
+			}
+			#output ul ul > li:last-child:after {
+				content: "";
+			}
+		</style>
+		<script type="text/javascript">
+		//<![CDATA[
+			function calculate_result(data) {
+				if(data.code != "/api/status/ok") {
+					document.getElementById('output').innerHTML = '<b>An error occurred.</b>';
+					return;
+				}
+				data = data.result;
+				if(!data || !data['/people/deceased_person/date_of_death']) {
+					document.getElementById('output').innerHTML = "<b>Author's date of death not found.</b>";
+					return;
+				}
+				var dt = data['/people/deceased_person/date_of_death'].match(/^(\d{4})-(\d{2})-(\d{2})$/);
+				dt = new Date(dt[1], dt[2]-1, dt[3]);
+				dt.setSeconds(1577846300); //add 50 years
+				document.getElementById('output').innerHTML = "Work enters the Canadian Public domain on " + dt.getFullYear() + '-' + (dt.getMonth()+1) + '-' + dt.getDay();
+			}
+			function calculate_item() {
+				var authors = this.getAttribute('data-author').split(/ /);
+				authors.pop();
+				if(authors.length > 1) {
+					document.getElementById('output').innerHTML = '<b>Multiple authors: result would be ambiguous.</b>';
+					return;
+				}
+				var s = document.createElement('script');
+				s.type = 'text/javascript'
+				s.src = 'http://api.freebase.com/api/service/mqlread?query={"query":{"id":"'+authors[0]+'","/people/deceased_person/date_of_death":null}}&callback=calculate_result';
+				document.body.appendChild(s);
+
+			}
+			function search_result(data) {
+				if(data.code != "/api/status/ok") {
+					document.getElementById('output').innerHTML = '<b>An error occurred.</b>';
+					return;
+				}
+				data = data.result;
+				var ul = document.createElement('ul');;
+				for(var i = 0; i < data.length; i++) {
+					if(data[i]['/book/written_work/author'].length) {
+						var li = document.createElement('li');
+						var txt = '<h2>'+data[i].name+' ('+data[i]['/book/written_work/author'][0].name+')'+'</h2><ul>';
+						for(var j = 0; j < data[i].type.length; j++) {
+							var name = data[i].type[j].name;
+							if(name == 'Topic' || !name) continue;
+							txt += ' <li>'+name+'</li> ';
+						}
+						li.innerHTML = txt+'</ul>';
+						var author = '';
+						for(var j = 0; j < data[i]['/book/written_work/author'].length; j++) {
+							author += data[i]['/book/written_work/author'][j].id + ' ';
+						}
+						li.setAttribute('data-author', author);
+						li.addEventListener('click', calculate_item, false);
+						ul.appendChild(li);
+					}
+				}
+				document.getElementById('output').innerHTML = '';
+				document.getElementById('output').appendChild(ul);
+			}
+			var searchTimeout;
+			function search(q) {
+				if(!q) return;
+				if(searchTimeout) clearTimeout(searchTimeout);
+				searchTimeout = setTimeout(function() {
+					document.getElementById('output').innerHTML = '<i>Loading...</i>';
+					var s = document.createElement('script');
+					s.type = 'text/javascript'
+					s.src = 'http://api.freebase.com/api/service/search?query='+encodeURIComponent(q)+'&mql_output=[{"name":null,"type":[{"name":null}],"/book/written_work/author":[{}]}]&type_strict=any&type=/book/written_work&callback=search_result';
+					document.body.appendChild(s);
+				}, 100);
+			}
+		//]]>
+		</script>
+	</head>
+
+	<body>
+		<h1>Canadian Public Domain Calculator</h1>
+		<p>This app uses data from <a href="http://freebase.com">Freebase</a> to calculate when works of literature will enter the public domain in Canada.</p>
+		<p>This app has some limitations: it cannot deal with multiple-author works, nor with corporate works.</p>
+		<p>This app is meant for informational purposes only.  The data has not been legally validated and should not be treated as legal advice.</p>
+		<form method="get" action="" onsubmit="search(this.q.value);return false;">
+			<input type="text" name="q" onkeyup="search(this.value);" />
+		</form>
+		<div id="output">Enter the name of a work of literature in the box above.</div>
+	</body>
+</html>
