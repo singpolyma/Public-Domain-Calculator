@@ -64,7 +64,8 @@
 				var dt = data['/people/deceased_person/date_of_death'].match(/^(\d{4})-(\d{2})-(\d{2})$/);
 				dt = new Date(dt[1], dt[2]-1, dt[3]);
 				dt.setSeconds(1577846300); //add 50 years
-				document.getElementById('output').innerHTML = "Work enters the Canadian Public domain on " + dt.getFullYear() + '-' + (dt.getMonth()+1) + '-' + dt.getDay();
+				var ent = (dt > Date.now()) ? 'enters' : 'entered';
+				document.getElementById('output').innerHTML = "Work " + ent + " the Canadian Public domain on " + dt.getFullYear() + '-' + (dt.getMonth()+1) + '-' + dt.getDay();
 			}
 			function calculate_item() {
 				var authors = this.getAttribute('data-author').split(/ /);
